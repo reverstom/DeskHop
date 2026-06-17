@@ -46,12 +46,8 @@ impl OsdWindow {
                 None,
                 instance,
                 Some(Box::into_raw(Box::new(text.clone())) as *mut c_void),
-            )
+            )?
         };
-
-        if hwnd.0 == 0 {
-            return Err(Error::from_win32());
-        }
 
         let osd = Self { hwnd, text };
         osd.set_opacity(opacity);

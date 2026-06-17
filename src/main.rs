@@ -18,6 +18,44 @@ mod desktop_manager;
 mod osd_window;
 mod settings;
 
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    SwitchDesktop(u32),
+    MoveWindow(u32),
+}
+
+fn get_digit_code(i: u32) -> Code {
+    match i {
+        1 => Code::Digit1,
+        2 => Code::Digit2,
+        3 => Code::Digit3,
+        4 => Code::Digit4,
+        5 => Code::Digit5,
+        6 => Code::Digit6,
+        7 => Code::Digit7,
+        8 => Code::Digit8,
+        9 => Code::Digit9,
+        0 => Code::Digit0,
+        _ => unreachable!(),
+    }
+}
+
+fn get_numpad_code(i: u32) -> Code {
+    match i {
+        1 => Code::Numpad1,
+        2 => Code::Numpad2,
+        3 => Code::Numpad3,
+        4 => Code::Numpad4,
+        5 => Code::Numpad5,
+        6 => Code::Numpad6,
+        7 => Code::Numpad7,
+        8 => Code::Numpad8,
+        9 => Code::Numpad9,
+        0 => Code::Numpad0,
+        _ => unreachable!(),
+    }
+}
+
 fn init_logging() {
     let log_dir = Path::new("logs");
     if let Err(e) = create_dir_all(log_dir) {
@@ -89,28 +127,41 @@ fn main() {
             return;
         }
     };
-    let mut hotkeys = Vec::new();
+    let mut hotkeys = std::collections::HashMap::new();
 
-    // Register Alt + 1 to Alt + 9
-    info!("Registering hotkeys...");
+    // Register Alt + 1 to Alt + 9 (Switch Desktop)
+    info!("Registering Switch Desktop hotkeys (Alt + 1..9)...");
     for i in 1..=9 {
-        let code = match i {
-            1 => Code::Digit1,
-            2 => Code::Digit2,
-            3 => Code::Digit3,
-            4 => Code::Digit4,
-            5 => Code::Digit5,
-            6 => Code::Digit6,
-            7 => Code::Digit7,
-            8 => Code::Digit8,
-            9 => Code::Digit9,
-            _ => unreachable!(),
-        };
+        let code = get_digit_code(i);
         let hotkey = HotKey::new(Some(Modifiers::ALT), code);
         if let Err(e) = hotkey_manager.register(hotkey) {
             error!("Failed to register hotkey Alt+{}: {:?}", i, e);
         } else {
-            hotkeys.push((hotkey.id(), i as u32));
+            hotkeys.insert(hotkey.id(), Action::SwitchDesktop(i));
+        }
+    }
+
+    // Register Ctrl + Alt + 1 to 9 (Move Window)
+    info!("Registering Move Window hotkeys (Ctrl + Alt + 1..9)...");
+    for i in 1..=9 {
+        let code = get_digit_code(i);
+        let hotkey = HotKey::new(Some(Modifiers::CONTROL | Modifiers::ALT), code);
+        if let Err(e) = hotkey_manager.register(hotkey) {
+            error!("Failed to register hotkey Ctrl+Alt+{}: {:?}", i, e);
+        } else {
+            hotkeys.insert(hotkey.id(), Action::MoveWindow(i));
+        }
+    }
+
+    // Register Ctrl + Alt + Numpad1 to 9 (Move Window)
+    info!("Registering Move Window hotkeys (Ctrl + Alt + Numpad1..9)...");
+    for i in 1..=9 {
+        let code = get_numpad_code(i);
+        let hotkey = HotKey::new(Some(Modifiers::CONTROL | Modifiers::ALT), code);
+        if let Err(e) = hotkey_manager.register(hotkey) {
+            error!("Failed to register hotkey Ctrl+Alt+Numpad{}: {:?}", i, e);
+        } else {
+            hotkeys.insert(hotkey.id(), Action::MoveWindow(i));
         }
     }
     info!("Registered {} hotkeys", hotkeys.len());
@@ -163,11 +214,18 @@ fn main() {
                     // Handle Hotkey Events
                     if let Ok(event) = hotkey_channel.try_recv() {
                         debug!("Hotkey event: {:?}", event);
-                        for (id, index) in &hotkeys {
-                            if event.id == *id {
-                                info!("Switching to desktop {}", index);
-                                desktop_manager.switch_to(*index - 1);
-                                osd_window.update_text(&format!("Desktop {}", index));
+                        if let Some(action) = hotkeys.get(&event.id) {
+                            match action {
+                                Action::SwitchDesktop(index) => {
+                                    info!("Switching to desktop {}", index);
+                                    desktop_manager.switch_to(*index - 1);
+                                    osd_window.update_text(&format!("Desktop {}", index));
+                                }
+                                Action::MoveWindow(index) => {
+                                    info!("Moving focused window to desktop {}", index);
+                                    desktop_manager.move_focused_window_to(*index - 1);
+                                    osd_window.update_text(&format!("Moved to Desktop {}", index));
+                                }
                             }
                         }
                     }
