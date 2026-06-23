@@ -1,0 +1,37 @@
+name: DeskHop
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.0.0 같은 태그가 푸시되면 실행
+
+jobs:
+  release:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: my-rust-app-linux
+          - os: windows-latest
+            artifact_name: my-rust-app-windows.exe
+          - os: macos-latest
+            artifact_name: my-rust-app-macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/release/${{ matrix.artifact_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
