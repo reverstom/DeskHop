@@ -10,6 +10,9 @@ jobs:
     name: Build and Release for Windows
     runs-on: windows-latest # 💡 오직 윈도우 환경만 사용합니다.
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
