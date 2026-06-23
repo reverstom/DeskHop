@@ -3,24 +3,16 @@ name: DeskHop
 on:
   push:
     tags:
-      - 'v*' # v1.0.0 같은 태그가 푸시되면 실행
+      - 'v*' # v1.0.0 같은 태그가 푸시되면 실행1
 
 jobs:
   release:
-    name: Publish for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_name: my-rust-app-linux
-          - os: windows-latest
-            artifact_name: my-rust-app-windows.exe
-          - os: macos-latest
-            artifact_name: my-rust-app-macos
+    name: Build and Release for Windows
+    runs-on: windows-latest # 💡 오직 윈도우 환경만 사용합니다.
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -32,6 +24,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/${{ matrix.artifact_name }}
+            target/release/deskhop.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
